@@ -1,6 +1,8 @@
 local function build()
   -- can I catch failure?
   vim.cmd({ cmd = '!', args = { './build.sh', '%' } })
+
+  return vim.v.shell_error == 0
 end
 
 local function run()
@@ -12,6 +14,7 @@ local function run()
 end
 
 vim.keymap.set('n', '<leader>cc', function()
-  build()
-  run()
+  if build() then
+    run()
+  end
 end, { desc = 'run build.sh' })
