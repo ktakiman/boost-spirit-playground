@@ -1,0 +1,7 @@
+.cache
+bin/
+
+compile_command_tmp.json
+compile_commands.json
+
+
