@@ -8,8 +8,12 @@
 
 void Clear() { std::cout << "\x1B[2J\x1B[H"; }
 
-void OutBool(const char *header, bool b) {
+void PrintBool(const char *header, bool b) {
   std::cout << header << std::boolalpha << b << std::endl;
+}
+
+void PrintResult(const char *text, bool result) {
+  std::cout << (result ? "✓ " : "x ") << text << std::endl;
 }
 
 namespace qi = boost::spirit::qi;
@@ -36,10 +40,10 @@ void TestBuildInSingleCharParsers(const std::string &s) {
   bool is_alpha = TryParse(s, ascii::alpha);
   bool is_alnum = TryParse(s, ascii::alnum);
 
-  OutBool("is_digit:   ", is_digit);
-  OutBool("is_xdigit:  ", is_xdigit);
-  OutBool("is_alpha:   ", is_alpha);
-  OutBool("is_alnum:   ", is_alnum);
+  PrintBool("is_digit:   ", is_digit);
+  PrintBool("is_xdigit:  ", is_xdigit);
+  PrintBool("is_alpha:   ", is_alpha);
+  PrintBool("is_alnum:   ", is_alnum);
 
   // other character sets
   //   boost::spirit::iso8859_1
@@ -58,10 +62,10 @@ void TestBuildInParsers(const std::string &s) {
   bool is_hex = TryParse(s, qi::hex);
   bool is_foo = TryParse(s, qi::lit("foo"));
 
-  OutBool("is_int:    ", is_int);
-  OutBool("is_double: ", is_double);
-  OutBool("is_hex:    ", is_hex);
-  OutBool("is_foo:    ", is_foo);
+  PrintBool("is_int:    ", is_int);
+  PrintBool("is_double: ", is_double);
+  PrintBool("is_hex:    ", is_hex);
+  PrintBool("is_foo:    ", is_foo);
 }
 
 // simple naked function
@@ -101,10 +105,35 @@ void TestSemanticAction(const std::string &s) {
   //           qi::double_[boost::bind(&C::print, &c, _1)]);
 }
 
+std::vector<const char *> gPresetSimpleRules = {
+    "[3]",
+    "[-4.5]",
+    "[1,2,3]",
+    "[1.3,-4.4,1.2345]",
+};
+
+void TestSimpleRule(const std::string &s) {
+  // rule is composed of parsers or other rules
+  auto rule = qi::char_('[') >> qi::double_ >>
+              *(qi::char_(',') >> qi::double_) >> qi::char_(']');
+
+  PrintResult(s.c_str(), TryParse(s, rule));
+}
+
 typedef void (*CALLBACK)(const std::string &);
 
-void SubLoop(CALLBACK callback, const char *prompt) {
+void SubLoop(CALLBACK callback, const char *prompt,
+             const std::vector<const char *> *preset = nullptr) {
   while (true) {
+    // try the preset if given
+    if (preset != nullptr) {
+      std::cout << std::endl << "--- preset ---" << std::endl;
+      for (auto &s : *preset) {
+        callback(s);
+      }
+      std::cout << "--------------" << std::endl;
+    }
+
     std::cout << std::endl << prompt << " > ";
     std::string s;
     std::getline(std::cin, s);
@@ -118,18 +147,25 @@ void SubLoop(CALLBACK callback, const char *prompt) {
   }
 }
 
+void SubLoop(CALLBACK callback, const char *prompt,
+             const std::vector<const char *> &preset) {
+  SubLoop(callback, prompt, &preset);
+}
+
 int main(int argc, char *argv[]) {
   while (true) {
     Clear();
     std::cout << "'1' - test single char parser" << std::endl;
     std::cout << "'2' - test buildin parsers" << std::endl;
     std::cout << "'3' - test semantic action" << std::endl;
+    std::cout << "'4' - test simple rule" << std::endl;
     std::cout << "'q' - quit" << std::endl;
     std::cout << "> ";
 
     std::string s;
     std::getline(std::cin, s);
 
+    Clear();
     if (s == "q") {
       return 0;
     } else if (s == "1") {
@@ -138,6 +174,8 @@ int main(int argc, char *argv[]) {
       SubLoop(TestBuildInParsers, "type a word");
     } else if (s == "3") {
       SubLoop(TestSemanticAction, "type a number");
+    } else if (s == "4") {
+      SubLoop(TestSimpleRule, "type a list of doubles", gPresetSimpleRules);
     }
   }
 
