@@ -23,6 +23,7 @@ BOOST_PATH=/home/kei/dev/cpp/boost_1_81_0/
 
 clang++ -O0 -g -o bin/${FILENAME} \
   -I${BOOST_PATH} \
+  -std=c++17 \
   -MJ${COMPILE_COMMAND_SINGLE} $1
 
 # COMPILE_COMMAND_SINGLE ends with ',' which needs to be removed
