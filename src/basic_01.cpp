@@ -3,6 +3,7 @@
 #include <string>
 #include <string_view>
 
+// #include <boost/bind.hpp>
 #include <boost/spirit/include/qi.hpp>
 
 void Clear() { std::cout << "\x1B[2J\x1B[H"; }
@@ -63,6 +64,43 @@ void TestBuildInParsers(const std::string &s) {
   OutBool("is_foo:    ", is_foo);
 }
 
+// simple naked function
+void F(double d) {
+  std::cout << "Semantic action call to naked function!! " << d << std::endl;
+}
+
+// class with operator
+class C {
+public:
+  void operator()(const double &d, qi::unused_type, qi::unused_type) const {
+    std::cout << "Semantic action call to operator()!! " << d << std::endl;
+  }
+
+  void print(const double &d) {
+    std::cout << "Semantic action call to C::print()!! " << d << std::endl;
+  }
+};
+
+void TestSemanticAction(const std::string &s) {
+  std::cout << "'" << s << "'" << std::endl;
+
+  qi::parse(std::begin(s), std::end(s), qi::double_[F]);
+
+  // can I use lambda? Yes!!
+  auto sem_act = [](double d) {
+    std::cout << "Semantic action call to lambda!! " << d << std::endl;
+  };
+
+  qi::parse(std::begin(s), std::end(s), qi::double_[sem_act]);
+
+  qi::parse(std::begin(s), std::end(s), qi::double_[C()]);
+
+  // this works but boost/bind.hpp generates compilation warning
+  // C c;
+  // qi::parse(std::begin(s), std::end(s),
+  //           qi::double_[boost::bind(&C::print, &c, _1)]);
+}
+
 typedef void (*CALLBACK)(const std::string &);
 
 void SubLoop(CALLBACK callback, const char *prompt) {
@@ -85,6 +123,7 @@ int main(int argc, char *argv[]) {
     Clear();
     std::cout << "'1' - test single char parser" << std::endl;
     std::cout << "'2' - test buildin parsers" << std::endl;
+    std::cout << "'3' - test semantic action" << std::endl;
     std::cout << "'q' - quit" << std::endl;
     std::cout << "> ";
 
@@ -97,6 +136,8 @@ int main(int argc, char *argv[]) {
       SubLoop(TestBuildInSingleCharParsers, "type a character");
     } else if (s == "2") {
       SubLoop(TestBuildInParsers, "type a word");
+    } else if (s == "3") {
+      SubLoop(TestSemanticAction, "type a number");
     }
   }
 
