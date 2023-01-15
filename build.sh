@@ -28,9 +28,3 @@ clang++ -O0 -g -o bin/${FILENAME} \
 
 # COMPILE_COMMAND_SINGLE ends with ',' which needs to be removed
 cat ${COMPILE_COMMAND_SINGLE} | sed 's/^/[/' | sed 's/,$/]/' > $COMPILE_COMMAND_FULL
-
-
-# nvim 
-# :lua vim.cmd({cmd='!',args={'./build.sh', '%'}})
-# :lua vim.keymap.set('n', '<leader>cc', function() vim.cmd({cmd='!',args={'./build.sh', '%'}}) end, { desc = 'run build.sh' })
-
