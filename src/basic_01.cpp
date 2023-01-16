@@ -2,9 +2,15 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <vector>
 
 // #include <boost/bind.hpp>
+#include <boost/phoenix.hpp>
 #include <boost/spirit/include/qi.hpp>
+
+namespace qi = boost::spirit::qi;
+namespace ascii = boost::spirit::ascii;
+namespace phoenix = boost::phoenix;
 
 void Clear() { std::cout << "\x1B[2J\x1B[H"; }
 
@@ -12,12 +18,19 @@ void PrintBool(const char *header, bool b) {
   std::cout << header << std::boolalpha << b << std::endl;
 }
 
+std::string GetMark(bool result) { return result ? "✓" : "x"; }
+
 void PrintResult(const char *text, bool result) {
-  std::cout << (result ? "✓ " : "x ") << text << std::endl;
+  std::cout << GetMark(result) << " " << text << std::endl;
 }
 
-namespace qi = boost::spirit::qi;
-namespace ascii = boost::spirit::ascii;
+void PrintDoubles(const std::vector<double> &v, bool result) {
+  std::cout << GetMark(result) << " size = " << v.size() << " | ";
+  for (double d : v) {
+    std::cout << d << ", ";
+  }
+  std::cout << std::endl;
+}
 
 // don't really want to make it look extra complex, but this helper does both
 // running parser and checking the iter position so it succeeds if the whole
@@ -27,6 +40,17 @@ template <typename Expr> bool TryParse(std::string_view s, const Expr &expr) {
   auto end = std::end(s);
   return qi::parse(itr, end, expr) && itr == end;
 }
+
+template <typename Expr>
+bool TryPhraseParse(std::string_view s, const Expr &expr) {
+  auto itr = std::begin(s);
+  auto end = std::end(s);
+  return qi::phrase_parse(itr, end, expr, ascii::space) && itr == end;
+}
+
+// --------------------------------------------------------------------------------
+// #1 spirit.qi basic
+// --------------------------------------------------------------------------------
 
 // trying out a single character parser (are these called parsers, too?)
 void TestBuildInSingleCharParsers(const std::string &s) {
@@ -102,14 +126,11 @@ void TestSemanticAction(const std::string &s) {
   // this works but boost/bind.hpp generates compilation warning
   // C c;
   // qi::parse(std::begin(s), std::end(s),
-  //           qi::double_[boost::bind(&C::print, &c, _1)]);
+  //           qi::double_[boost::bind(&C::print, &c, qi::_1)]);
 }
 
 std::vector<const char *> gPresetSimpleRules = {
-    "[3]",
-    "[-4.5]",
-    "[1,2,3]",
-    "[1.3,-4.4,1.2345]",
+    "[3]", "[-4.5]", "[1,2,3]", "[1.3,-4.4,1.2345]", "[1, 2, 3, 4]", "[1 3, 2]",
 };
 
 void TestSimpleRule(const std::string &s) {
@@ -117,9 +138,58 @@ void TestSimpleRule(const std::string &s) {
   auto rule = qi::char_('[') >> qi::double_ >>
               *(qi::char_(',') >> qi::double_) >> qi::char_(']');
 
-  PrintResult(s.c_str(), TryParse(s, rule));
+  PrintResult((s + " (parse)       ").c_str(), TryParse(s, rule));
+
+  // try phrase parser, too
+  PrintResult((s + " (phrase_parse)").c_str(), TryPhraseParse(s, rule));
 }
 
+void TestAttributes(const std::string &s) {
+  auto rule = qi::double_ % qi::char_(',');
+  std::vector<double> v;
+
+  auto iter = std::begin(s);
+  auto end = std::end(s);
+
+  bool parsed = qi::phrase_parse(iter, end, rule, ascii::space, v);
+
+  PrintDoubles(v, parsed);
+}
+
+// --------------------------------------------------------------------------------
+// #2 boost.phoenix
+// --------------------------------------------------------------------------------
+void TestPhoenix(const std::string &s) {
+  // takes two doubles separated by comma
+  double d1 = 0.0;
+  double d2 = 0.0;
+
+  // use boost::phoenix to save parse result to a variable
+  // not quite sure yet what else we can do inside '[...]'
+  auto rule = qi::double_[phoenix::ref(d1) = qi::_1] >> qi::char_(',') >>
+              qi::double_[phoenix::ref(d2) = qi::_1];
+
+  bool parsed = TryParse(s, rule);
+
+  std::cout << GetMark(parsed) << " " << d1 << ", " << d2 << std::endl;
+}
+
+void TestPhoenixWithVector(const std::string &s) {
+  // takes two doubles separated by comma
+  std::vector<double> v;
+
+  // tring out a simpler syntax to define list of something
+  auto rule =
+      qi::double_[phoenix::push_back(phoenix::ref(v), qi::_1)] % qi::char_(',');
+
+  bool parsed = TryParse(s, rule);
+
+  PrintDoubles(v, parsed);
+}
+
+// --------------------------------------------------------------------------------
+// #9 framework
+// --------------------------------------------------------------------------------
 typedef void (*CALLBACK)(const std::string &);
 
 void SubLoop(CALLBACK callback, const char *prompt,
@@ -159,6 +229,9 @@ int main(int argc, char *argv[]) {
     std::cout << "'2' - test buildin parsers" << std::endl;
     std::cout << "'3' - test semantic action" << std::endl;
     std::cout << "'4' - test simple rule" << std::endl;
+    std::cout << "'5' - test attributes" << std::endl;
+    std::cout << "'a' - test phoenix" << std::endl;
+    std::cout << "'b' - test phoenix with vector" << std::endl;
     std::cout << "'q' - quit" << std::endl;
     std::cout << "> ";
 
@@ -175,7 +248,14 @@ int main(int argc, char *argv[]) {
     } else if (s == "3") {
       SubLoop(TestSemanticAction, "type a number");
     } else if (s == "4") {
-      SubLoop(TestSimpleRule, "type a list of doubles", gPresetSimpleRules);
+      SubLoop(TestSimpleRule, "type a list of doubles inide []",
+              gPresetSimpleRules);
+    } else if (s == "5") {
+      SubLoop(TestAttributes, "type a list of doubles");
+    } else if (s == "a") {
+      SubLoop(TestPhoenix, "type two doubles");
+    } else if (s == "b") {
+      SubLoop(TestPhoenixWithVector, "type a list of doubles");
     }
   }
 
