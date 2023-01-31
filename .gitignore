@@ -1,5 +1,6 @@
 .cache
 bin/
+ninja-*/
 
 compile_command_tmp.json
 compile_commands.json
