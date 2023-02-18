@@ -4,7 +4,6 @@ project(SpiritTest
   LANGUAGES CXX  
 )
 
-set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS True)
 
 # not sure if this is the best way to override the output directory
@@ -23,6 +22,10 @@ target_sources(test
 target_include_directories(test
   PRIVATE
   /home/kei/dev/cpp/boost_1_81_0/
+)
+target_compile_features(test
+  PRIVATE
+  cxx_std_17
 )
 
 
