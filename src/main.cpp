@@ -54,6 +54,8 @@ int main(int argc, char *argv[]) {
     std::cout << "'5' - test attributes" << std::endl;
     std::cout << "'a' - test phoenix" << std::endl;
     std::cout << "'b' - test phoenix with vector" << std::endl;
+    std::cout << "'c' - test phoenix with vector of pairs" << std::endl;
+    std::cout << "'x' - just test phoenix" << std::endl;
     std::cout << "'q' - quit" << std::endl;
     std::cout << "> ";
 
@@ -78,6 +80,11 @@ int main(int argc, char *argv[]) {
       SubLoop(TestPhoenix, "type two doubles");
     } else if (s == "b") {
       SubLoop(TestPhoenixWithVector, "type a list of doubles");
+    } else if (s == "c") {
+      SubLoop(TestPhoenixWithVectorOfPairs,
+              "[double,double],[double,double],...");
+    } else if (s == "x") {
+      SubLoop(JustTestPhoenix, "type q to go back");
     }
   }
 
